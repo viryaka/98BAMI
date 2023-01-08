@@ -3,7 +3,7 @@
 // @namespace    98BAMI
 // @author       Virya
 
-// @description  为堂内帖子列表、搜索页和个人页增加多图预览支持。下面链接分别是org和net域名下的论坛地址，也可自行添加修改论坛域名或分区地址。如果你希望脚本对某个分区不生效，请在下方@exclude填写分区地址。
+// @description  为堂内帖子列表、搜索页、个人页和收藏页增加多图预览支持。下面链接分别是org和net域名下的论坛地址，也可自行添加修改论坛域名或分区地址。如果你希望脚本对某个分区不生效，请在下方@exclude填写分区地址。
 // @match        https://www.sehuatang.org/forum*
 // @match        https://sehuatang.org/forum*
 // @match        https://www.sehuatang.net/forum*
@@ -23,18 +23,27 @@
 // @match        https://gfggfdw.0nkaz.com/search*
 // @match        https://gfggfdw.0nkaz.com/home*
 
-// @grant          GM_xmlhttpRequest
-// @require https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js
-// @require http://lib.baomitu.com/jquery.lazyload/1.9.1/jquery.lazyload.min.js
-
 // @connect sehuatang.org
 // @connect sehuatang.net
 
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_setClipboard
+// @grant        GM_xmlhttpRequest
+// @grant        GM_getResourceText
+// @grant        GM_addStyle
+// @grant        GM_openInTab
+// @grant        GM_registerMenuCommand
 
-// @version 3.2.1
+// @require https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js
+// @require http://lib.baomitu.com/jquery.lazyload/1.9.1/jquery.lazyload.min.js
+
+// @version 3.5.2
 // @license MIT
 // ==/UserScript==
 /* global $ */
+
+
 
 function main() {
 
@@ -42,7 +51,7 @@ function main() {
     //判断是帖子列表页、搜索页还是个人页
     var url = window.location.href;
     getSelectors(url);
-    //console.log(selector1, selector2, appendMethod);
+    //console.log(selector1);
 
     //获取每个帖子内容
     selector1.each(function(){
@@ -113,7 +122,7 @@ function main() {
 var selector1, selector2, appendMethod;
 
 function getSelectors(url) {
-    if (url.match(/.*\/forum.*/)) {
+    if (url.match(/^.*forum\.php\?.*mod=forumdisplay.*$/)) {
         selector1 = $('[id^=normalthread]');
         selector2 = ".icn a";
         appendMethod = 'append';
@@ -134,29 +143,102 @@ function getSelectors(url) {
             'font-family':"'PingFang SC','Helvetica Neue','Microsoft YaHei New','STHeiti Light',sans-serif",
         });
     } else if (url.match(/.*\/search.*/)) {
+
+        // 将按钮添加到页面中
+        $('body').append(filterButton);
+        // 如果配置项的值为 true，则调用 removeSpecialPosts() 函数
+        if (filterConfig.enabled) {
+            removeSpecialPosts('fid=143');
+        }
+
         selector1 = $('.pbw');
         selector2 = ".xs3 a";
         appendMethod = 'append';
         $('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', 'data/cache/style_1_forum_forumdisplay.css?acl') );
-    } else if (url.match(/.*\/home.*/)) {
+    } else if (url.match(/^.*home\.php\?.*do=thread.*$/)) {
         selector1 = $('tr');
         selector2 = "th a";
         appendMethod = 'after';
         $('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', 'data/cache/style_1_forum_forumdisplay.css?acl') );
+    } else if (url.match(/^.*home\.php\?.*do=favorite.*$/)) {
+        selector1 = $('.bbda.ptm.pbm');
+        selector2 = "a:eq(1)";
+        appendMethod = 'append';
+        //$('head').append( $('<link rel="stylesheet" type="text/css" />').attr('href', 'data/cache/style_1_forum_forumdisplay.css?acl') );
+    } else if (url.match(/^.*forum\.php\?.*mod=guide.*$/)) {
+        selector1 = $('[id^=normalthread]');
+        selector2 = ".icn a";
+        appendMethod = 'append_guide';
     }
 }
 
 
 function addRow(appendMethod, target) {
-  var row = $('<tr><td id = "imgbox_td" colspan=5></td ></tr>');
   if (appendMethod === 'append') {
+    var row = $('<tr><td id = "imgbox_td" colspan=5></td ></tr>');
     row.appendTo(target);
     return target.find('#imgbox_td')
   } else if (appendMethod === 'after') {
+    row = $('<tr><td id = "imgbox_td" colspan=5 ></td ></tr>');
     target.after(row);
     return target.next('tr').find('#imgbox_td')
+  } else if (appendMethod === 'append_guide') {
+    row = $('<tr><td id = "imgbox_td" colspan=6 ></td ></tr>');
+    row.appendTo(target);
+    return target.find('#imgbox_td')
   }
 }
+
+
+
+
+
+
+//过滤特殊帖子类型
+function removeSpecialPosts(keyword) {
+  $("li:has(a[href*='" + keyword + "'])").remove();
+}
+
+// 设置过滤按钮的样式
+var filterButton = $('<button>').text('点击过滤悬赏贴').css({
+  position: 'fixed',
+  top: '141px',
+  left: '93%',
+  background: '#ed4014',
+  color: 'white',
+  padding: '0px 7px',
+  border: '0',
+  cursor: 'pointer',
+  'border-radius': '3px',
+  height : '24px',
+  'font-size': '14px',
+  'font-family':"'PingFang SC','Helvetica Neue','Microsoft YaHei New','STHeiti Light',sans-serif",
+});
+
+
+// 获取过滤配置项的值
+var filterConfig = JSON.parse(localStorage.getItem('config')) || {};
+
+// 根据过滤配置项的值更新过滤按钮文案和按钮颜色
+if (filterConfig.enabled) {
+  filterButton.text('停止过滤悬赏贴').css('background', 'gray');
+} else {
+  filterButton.text('点击过滤悬赏贴').css('background', '#ed4014');
+}
+
+// 绑定过滤按钮点击事件
+filterButton.click(function() {
+  // 切换配置项的值
+  filterConfig.enabled = !filterConfig.enabled;
+  localStorage.setItem('config', JSON.stringify(filterConfig));
+
+  // 刷新当前页面
+  location.reload();
+
+});
+
+
+
 
 
 
