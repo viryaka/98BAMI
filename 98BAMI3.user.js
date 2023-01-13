@@ -40,7 +40,7 @@
 // @require https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js
 // @require http://lib.baomitu.com/jquery.lazyload/1.9.1/jquery.lazyload.min.js
 
-// @version 3.5.5
+// @version 3.5.6
 // @license MIT
 // ==/UserScript==
 /* global $ */
@@ -173,7 +173,7 @@ function main() {
 var selector1, selector2, appendMethod;
 
 function getSelectors(url) {
-    if (url.match(/^.*forum\.php\?.*mod=forumdisplay.*$/)) {
+    if (url.match(/^.*forum\.php\?.*mod=forumdisplay.*$/) || url.match(/[\w.-]+\/.*forum-\d+.*/)) {
         selector1 = $('[id^=normalthread]');
         selector2 = ".icn a";
         appendMethod = 'append';
